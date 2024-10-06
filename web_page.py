@@ -1,38 +1,17 @@
 import streamlit as st
-from datetime import datetime
-import pymongo
-import pytz
+import whisper
 
-# Connect to MongoDB
-client = pymongo.MongoClient("mongodb+srv://suriya315:12345678s@cluster0.kbh9v.mongodb.net/?retryWrites=true&w=majority")
-db = client.diary
-diary_collection = db.log
+st.title("Audio to Text Converter")
 
-# Function to get current Indian time
-def get_current_indian_time():
-    indian_tz = pytz.timezone('Asia/Kolkata')
-    return datetime.now(indian_tz)
+audio_file=st.file_uploader("upload audio file")
 
-# Title of the app
-st.title("Diary Maker")
-diary_heading = st.text_input("Enter diary heading:")
-diary_content = st.text_area("Write your diary entry here:")
-uploaded_files = st.file_uploader("Upload your images", accept_multiple_files=True, type=["jpg", "jpeg", "png"])
-
-# Store diary entry in MongoDB when the user clicks a button
-if st.button("Save Diary Entry"):
-    diary_entry = {
-        "heading": diary_heading,
-        "content": diary_content,
-        "images": [],
-        "timestamp": get_current_indian_time(),
-        "entry_date": get_current_indian_time().strftime("%Y-%m-%d %H:%M:%S")  # Add current date and time in Indian timezone
-    }
-    # Save uploaded images to MongoDB GridFS and store their IDs
-    if uploaded_files:
-        for img_file in uploaded_files:
-            img_id = db.fs.files.insert_one({"name": img_file.name, "data": img_file.read()}).inserted_id
-            diary_entry["images"].append(str(img_id))
-    # Insert diary entry into MongoDB
-    diary_collection.insert_one(diary_entry)
-    st.success("Diary entry saved successfully!")
+if audio_file is not None:
+    model=whisper.load_model("base")
+    st.write("file uploaded")
+    with open("audio_temp.wav","wb") as f:
+        f.write(audio_file.getbuffer())
+    st.audio(audio_file)
+    with st.spinner("Converting to Text"):
+        result=model.transcribe("audio_temp.wav")
+    st.write(result["language"])
+    st.write(result["text"])
